@@ -108,6 +108,12 @@
 
 - [Casper 1.384](https://launchpad.net/ubuntu/+source/casper/1.384)
 
+## Documentation
+
+- <http://manpages.ubuntu.com/manpages/zesty/man7/casper.7.html>
+- <https://manpages.debian.org/jessie/live-boot-doc/live-boot.7.en.html>
+- <https://git.archlinux.org/archiso.git/plain/docs/README.bootparams>
+- <http://man7.org/linux/man-pages/man7/dracut.cmdline.7.html>
 
 ## License
 
