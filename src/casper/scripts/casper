@@ -41,6 +41,13 @@ parse_cmdline() {
                 export PERSISTENT="" ;;
             persistent-path=*)
                 export PERSISTENT_PATH="${x#persistent-path=}" ;;
+            persistent-label=*)
+                temp="${x#persistent-label=}"
+                export PERSISTENT_DEVICE="$(/sbin/blkid -L $temp 2>/dev/null)" ;;
+            persistent-name=*)
+                root_persistence="${x#persistent-name=}" ;;
+            persistent-storage=*)
+                export PERSISTENT_STORAGE="${x#persistent-storage=}" ;;
             union=*)
                 export UNIONFS="${x#union=}";;
             ip=*)
@@ -409,28 +416,33 @@ setup_unionfs() {
 
     # Work out if this is an existing persistance partition and if so
     # move its existing "upper" into a new upper directory.
-    if [ ! -d /cow/upper ]; then
-        mkdir -p /cow/upper
-        for cow_content in /cow/*
+    if [ "${PERSISTENT_STORAGE}" = "filesystem" ] && [ -n "${PERSISTENT_PATH}" ]; then
+        persPath="${PERSISTENT_PATH}"
+    else
+        persPath=""
+    fi
+    if [ ! -d /cow${persPath}/upper ]; then
+        mkdir -p /cow${persPath}/upper
+        for cow_content in /cow${persPath}/*
         do
             case "$cow_content" in
-            /cow/lost+found|/cow/upper)     continue ;;
+            /cow${persPath}/lost+found|/cow${persPath}/upper)     continue ;;
             esac
 
-            mv "$cow_content" /cow/upper
+            mv "$cow_content" /cow${persPath}/upper
 
             # We have no format information, so fake some up.  If they
             # have not specified any then we simply assume it was
             # overlayfs (V1 format).
-            cow_write_format "overlayfs" /cow/format
+            cow_write_format "overlayfs" /cow${persPath}/format
         done
     fi
-    mkdir -p /cow/work
+    mkdir -p /cow${persPath}/work
 
     # Look and see if we have a current format, it is essential we use
     # a compatible format.  Relies on the recovery above having cleaned
     # out the top level.
-    [ -f /cow/format ] && . /cow/format
+    [ -f /cow${persPath}/format ] && . /cow${persPath}/format
 
     # See if we have the appropriate format, pick the first one if
     # unspecified.
@@ -508,15 +520,15 @@ setup_unionfs() {
     rofsstring=${rofsstring%:}
 
     # Record the format we are using for this mount.
-    [ ! -f /cow/format ] && cow_write_format "${UNIONFS}" /cow/format
+    [ ! -f /cow${persPath}/format ] && cow_write_format "${UNIONFS}" /cow${persPath}/format
     case ${UNIONFS} in
         unionfs-fuse)
-            (ulimit -n 16384; unionfs-fuse -o cow -o noinitgroups -o default_permissions -o allow_other -o use_ino -o suid /cow/upper=RW:$rofsstring "$rootmnt" || panic "${UNIONFS} mount failed")
+            (ulimit -n 16384; unionfs-fuse -o cow -o noinitgroups -o default_permissions -o allow_other -o use_ino -o suid /cow${persPath}/upper=RW:$rofsstring "$rootmnt" || panic "${UNIONFS} mount failed")
             mkdir -p /dev/.initramfs/varrun
             pidof unionfs-fuse >> /dev/.initramfs/varrun/sendsigs.omit || true
             ;;
         aufs|unionfs)
-            mount -t ${UNIONFS} -o noatime,dirs=/cow/upper=rw:$rofsstring ${UNIONFS} "$rootmnt" || panic "${UNIONFS} mount failed"
+            mount -t ${UNIONFS} -o noatime,dirs=/cow${persPath}/upper=rw:$rofsstring ${UNIONFS} "$rootmnt" || panic "${UNIONFS} mount failed"
             ;;
         overlay|overlayfs)
             mounts=""
@@ -525,7 +537,7 @@ setup_unionfs() {
                 mounts="$mounts:$mount"
             done
             mounts="${mounts#:}"
-            mount -t ${UNIONFS} -o "upperdir=/cow/upper,lowerdir=$mounts,workdir=/cow/work" "/cow" "$rootmnt" || panic "${UNIONFS} mount failed"
+            mount -t ${UNIONFS} -o "upperdir=/cow${persPath}/upper,lowerdir=$mounts,workdir=/cow${persPath}/work" "/cow${persPath}" "$rootmnt" || panic "${UNIONFS} mount failed"
             ;;
     esac
 

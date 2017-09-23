@@ -193,42 +193,30 @@ try_mount ()
 
 find_cow_device() {
     pers_label="${1}"
-    cow_backing="/${pers_label}-backing"
-
+    
+    if [ -z ${PERSISTENT_DEVICE} ]; then
+        return 1
+    fi
     if [ -z "${PERSISTENT_PATH}" ]; then
-        pers_fpath=${pers_label}
+        PERS_PATH=${pers_label}
     else
-        pers_fpath=${PERSISTENT_PATH}/${pers_label}
+        PERS_PATH=${PERSISTENT_PATH}/${pers_label}
     fi
 
-    for sysblock in $(echo /sys/block/* | tr ' ' '\n' | grep -v loop); do
-	# do not ever probe floppies, probing nonexistant ones delays the boot to half an hour and longer
-        n=${sysblock##*/}
-        if [ "${n#fd}" != "$n" ]; then
-            continue
+    if [ "${PERSISTENT_STORAGE}" = "filesystem" ]; then
+        if [ "${pers_label}" = "casper-rw" ]; then
+            echo "${PERSISTENT_DEVICE}"
+            return
         fi
-        for dev in $(subdevices "${sysblock}"); do
-            devname=$(sys2dev "${dev}")
-            if [ "$(/sbin/blkid -s LABEL -o value $devname 2>/dev/null)" = "${pers_label}" ]; then
-                echo "$devname"
-                return
-            # Do not add any filesystem types here that might be able to
-            # mount a journalled filesystem and replay the journal. Doing so
-            # will cause data loss when a live CD is booted on a system
-            # where filesystems are in use by hibernated operating systems.
-            elif [ "$(get_fstype ${devname})" = "vfat" ]; then
-                mkdir -p "${cow_backing}"
-                try_mount "${devname}" "${cow_backing}" "rw" || continue
-                cow_backing_mp=$(where_is_mounted "${devname}")
-                if [ -e "${cow_backing_mp}/${pers_fpath}" ]; then
-                    echo $(setup_loop "${cow_backing_mp}/${pers_fpath}" "loop" "/sys/block/loop*")
-                    return 0
-                else
-                    umount ${cow_backing_mp}
-                fi
-            fi
-        done
-    done
+    else
+        mountpoint="/LiveInitrd"
+        try_mount "${PERSISTENT_DEVICE}" "${mountpoint}" "rw" || continue
+        mountpoint=$(where_is_mounted ${PERSISTENT_DEVICE})
+        if [ -e "${mountpoint}/${PERS_PATH}" ]; then
+            echo $(setup_loop "${mountpoint}/${PERS_PATH}" "loop" "/sys/block/loop*")
+            return 0
+        fi
+    fi
 }
 
 find_files()
