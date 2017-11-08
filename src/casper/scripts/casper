@@ -39,13 +39,17 @@ parse_cmdline() {
                 export PERSISTENT="Yes" ;;
             nopersistent)
                 export PERSISTENT="" ;;
+            read-only-snap)
+                export readOnlySnap="Yes" ;;
+            persistent-size=*)
+                export PERSISTENT_SIZE="${x#persistent-size=}" ;;
             persistent-path=*)
                 export PERSISTENT_PATH="${x#persistent-path=}" ;;
-            persistent-label=*)
-                temp="${x#persistent-label=}"
-                export PERSISTENT_DEVICE="$(/sbin/blkid -L $temp 2>/dev/null)" ;;
+            persistent-uuid=*)
+                temp="${x#persistent-uuid=}"
+                export PERSISTENT_DEVICE="$(/sbin/blkid -U $temp 2>/dev/null)" ;;
             persistent-name=*)
-                root_persistence="${x#persistent-name=}" ;;
+                export root_persistence="${x#persistent-name=}" ;;
             persistent-storage=*)
                 export PERSISTENT_STORAGE="${x#persistent-storage=}" ;;
             union=*)
@@ -378,7 +382,9 @@ try_snap ()
             return 1
         fi
     fi
-    echo "export ${snap_type}SNAP="/cow${snap_mount#$rootmnt}":${snapdev}:${snapfile}" >> /etc/casper.conf # for resync on reboot/halt
+    if [ x$readOnlySnap != "xYes" ]; then
+        echo "export ${snap_type}SNAP="/cow${snap_mount#$rootmnt}":${snapdev}:${snapfile}" >> /etc/casper.conf # for resync on reboot/halt
+    fi
     return 0
 }
 

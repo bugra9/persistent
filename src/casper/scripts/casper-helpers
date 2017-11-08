@@ -191,6 +191,7 @@ try_mount ()
     fi
 }
 
+is_int() { return $(test "$@" -eq "$@" > /dev/null 2>&1); }
 find_cow_device() {
     pers_label="${1}"
     
@@ -213,6 +214,14 @@ find_cow_device() {
         try_mount "${PERSISTENT_DEVICE}" "${mountpoint}" "rw" || continue
         mountpoint=$(where_is_mounted ${PERSISTENT_DEVICE})
         if [ -e "${mountpoint}/${PERS_PATH}" ]; then
+            echo $(setup_loop "${mountpoint}/${PERS_PATH}" "loop" "/sys/block/loop*")
+            return 0
+        elif [ -n "${PERSISTENT_SIZE}" ] && $(is_int "${PERSISTENT_SIZE}") && [ "${PERSISTENT_SIZE}" -ge "100" ] && [ "${PERSISTENT_SIZE}" -le "16000" ] && [ ${root_persistence} = ${pers_label} ] && [ ! -e "${mountpoint}/${PERS_PATH}" ]; then
+            mkdir -p "${mountpoint}/${PERSISTENT_PATH}"
+            /helper/bin/dd if="/dev/zero" of="${mountpoint}/${PERS_PATH}" bs=1M count=${PERSISTENT_SIZE} >/dev/null
+            sync >/dev/null
+            /helper/sbin/mkfs.ext4 -F "${mountpoint}/${PERS_PATH}" >/dev/null
+            sync >/dev/null
             echo $(setup_loop "${mountpoint}/${PERS_PATH}" "loop" "/sys/block/loop*")
             return 0
         fi
