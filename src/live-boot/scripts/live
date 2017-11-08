@@ -1,0 +1,21 @@
+#!/bin/sh
+
+#set -e
+
+. /bin/live-boot
+
+. /scripts/functions
+
+mountroot ()
+{
+	# initramfs-tools entry point for live-boot is mountroot(); function
+	Live
+
+	for x in $(cat /proc/cmdline); do
+		case $x in
+		runinstaller)
+			cp /debian-installer-launcher.desktop ${rootmnt}/etc/xdg/autostart/
+			;;
+		esac
+	done
+}
