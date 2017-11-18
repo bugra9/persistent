@@ -1,0 +1,13 @@
+Source: baslatan-initrd
+Section: utils
+Priority: optional
+Maintainer: bugra9 <bugra9@gmail.com>
+Build-Depends: debhelper (>=9)
+Standards-Version: 3.9.8
+Homepage: https://github.com/bugra9/persistent
+#Vcs-Git: git://github.com/bugra9/persistent.git
+#Vcs-Browser: https://github.com/bugra9/persistent.git
+
+Package: baslatan-initrd
+Architecture: all
+Description: Baslatan Persistent

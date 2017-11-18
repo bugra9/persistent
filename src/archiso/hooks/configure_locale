@@ -1,0 +1,39 @@
+run_latehook() {
+    if [ "${baslatan_locale}" = "tr_TR" ]; then
+        [ -z "${baslatan_keyboard}" ] && baslatan_keyboard="tr"
+    [ -z "${baslatan_timezone}" ] && baslatan_timezone="Europe/Istanbul"
+    fi
+    [ -z "${baslatan_locale}" ] && baslatan_locale="en_US"
+    [ -z "${baslatan_keyboard}" ] && baslatan_keyboard="us"
+    [ -z "${baslatan_timezone}" ] && baslatan_timezone="Etc/UTC"
+    
+    echo "LANG=${baslatan_locale}.UTF-8" >> /new_root/etc/environment
+    echo "LANG=${baslatan_locale}.UTF-8" > /new_root/etc/locale.conf
+    echo "${baslatan_locale}.UTF-8 UTF-8" > /new_root/etc/locale.gen
+
+    echo "KEYMAP=${baslatan_keyboard}" > /new_root/etc/vconsole.conf
+
+    echo "
+Section \"InputClass\"
+    Identifier \"system-keyboard\"
+    MatchIsKeyboard \"on\"
+    Option \"XkbLayout\" \"${baslatan_keyboard}\"
+EndSection" > /new_root/etc/X11/xorg.conf.d/00-keyboard.conf
+    echo "
+Section \"InputClass\"
+    Identifier \"keyboard-layout\"
+    Driver \"evdev\"
+    MatchIsKeyboard \"yes\"
+    Option \"XkbLayout\" \"${baslatan_keyboard}\"
+EndSection" > /new_root/etc/X11/xorg.conf.d/01-keyboard-layout.conf
+
+    chroot /new_root ln -sf "/usr/share/zoneinfo/${baslatan_timezone}" /etc/localtime
+
+    chroot /new_root locale-gen "${baslatan_locale}"
+}
+
+run_hook() {
+	echo "LANG=${baslatan_locale}.UTF-8" >> /new_root/etc/environment2
+}
+
+# vim: set ft=sh ts=4 sw=4 et:

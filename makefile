@@ -1,19 +1,25 @@
-COPY =  cp -r -T
-UNINSTALL = rm -r
+INSTALL = /usr/bin/install -c
+UNINSTALL = rm -f
 MKDIR = mkdir -p
 
+OPT_DIR = /opt
+PROGRAM_DIR = ${OPT_DIR}/baslatan/initrd
 
-
-makedir:
-	test -d "temp" || $(MKDIR) "temp"
+build:
 	test -d "dist" || $(MKDIR) "dist"
 
-	cd src && ls -1 | xargs -I file $(COPY) file "../temp/"
+	for dir in $$(ls src) ; do \
+		cd src/$$dir && find . | cpio --quiet -o -H newc | lzma -7 > ../../dist/$$dir.lz && cd ../.. ; \
+  done
 
-	cd temp && find . | cpio --quiet --dereference -o -H newc | lzma -7 > ../dist/bootableusb.lz
-	-$(UNINSTALL) temp
+makedir:
+	test -d "$(DESTDIR)${PROGRAM_DIR}" || $(MKDIR) "$(DESTDIR)${PROGRAM_DIR}"
 	
+install: makedir
+	$(INSTALL) -m 644 -D dist/* "$(DESTDIR)$(PROGRAM_DIR)"
+
+uninstall:
+	-$(UNINSTALL) -r "$(DESTDIR)$(PROGRAM_DIR)"
 
 clean:
-	-$(UNINSTALL) dist
-	-$(UNINSTALL) temp
+	-$(UNINSTALL) -r dist

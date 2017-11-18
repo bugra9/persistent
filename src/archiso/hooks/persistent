@@ -1,0 +1,37 @@
+run_hook() {
+	:
+}
+
+_mnt_overlayfs() {
+	local src="${1}"
+  local newroot="${2}"
+  local mnt="${3}"
+
+  if [[ "${cow_persistent}" == "P" ]]; then
+		if [[ -f "/run/archiso/cowspace${cow_directory}/${cow_filename}" ]]; then
+			msg ":: Found '/run/archiso/cowspace${cow_directory}/${cow_filename}', using as persistent."
+		else
+			msg ":: Creating '/run/archiso/cowspace${cow_directory}/${cow_filename}' as persistent."
+			mkdir -p "/run/archiso/cowspace${cow_directory}"
+			#truncate -s "${cowfile_size}" "/run/archiso/cowspace${cow_directory}/${cow_filename}"
+			/helper/bin/dd if="/dev/zero" of="/run/archiso/cowspace${cow_directory}/${cow_filename}" bs=1M count=100 >/dev/null
+			sleep 1
+      /helper/sbin/mkfs.ext4 -F "/run/archiso/cowspace${cow_directory}/${cow_filename}" >/dev/null
+      sleep 3
+		fi
+		mkdir -p /run/archiso/persistent
+		rw_dev=$(losetup --find --show "/run/archiso/cowspace${cow_directory}/${cow_filename}")
+    echo ${rw_dev} >> /run/archiso/used_block_devices
+    _mnt_dev "${rw_dev}" "/run/archiso/persistent" "-r" "defaults"
+    echo $(readlink -f "/run/archiso/cowspace${cow_directory}/${cow_filename}") >> /run/archiso/used_block_devices
+    mount -o remount,rw "/run/archiso/persistent"
+
+    mkdir -p /run/archiso/persistent/upperdir /run/archiso/persistent/workdir
+    mount -t overlay -o lowerdir=${src},upperdir=/run/archiso/persistent/upperdir,workdir=/run/archiso/persistent/workdir root-image "${newroot}${mnt}"
+	else
+		mkdir -p /run/archiso/cowspace/${cow_directory}/upperdir /run/archiso/cowspace/${cow_directory}/workdir
+  	mount -t overlay -o lowerdir=${src},upperdir=/run/archiso/cowspace/${cow_directory}/upperdir,workdir=/run/archiso/cowspace/${cow_directory}/workdir root-image "${newroot}${mnt}"
+  fi
+}
+
+# vim: set ft=sh ts=4 sw=4 et:
